@@ -59,3 +59,32 @@ def test_se_decreasing() -> None:
 def test_matern_invalid_nu() -> None:
     with pytest.raises(ValueError, match="nu"):
         matern(1.0)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [matern(0.5, length_scale=(0.5, 0.5), variance=1.0), squared_exponential((0.5, 0.5), variance=1.0)],
+    ids=["matern", "se"],
+)
+def test_isotropic_tuple_matches_scalar(factory: StationaryKernel) -> None:
+    r = np.linspace(0.0, 1.0, 50)
+    if "Matern" in type(factory).__name__:
+        ref = matern(0.5, length_scale=0.5, variance=1.0)
+    else:
+        ref = squared_exponential(length_scale=0.5, variance=1.0)
+    np.testing.assert_allclose(factory(r), ref(r))
+
+
+@pytest.mark.parametrize(
+    "length_scale",
+    [(0.3,), (0.3, 0.4, 0.5), (-0.3, 0.4), 0.0],
+)
+def test_matern_invalid_length_scale(length_scale: object) -> None:
+    with pytest.raises(ValueError, match="length_scale"):
+        matern(0.5, length_scale=length_scale)  # type: ignore[arg-type]
+
+
+def test_anisotropic_kernel_requires_scaled_radii_for_direct_calls() -> None:
+    k = matern(1.5, length_scale=(0.3, 0.4), variance=1.0)
+    with pytest.raises(ValueError, match="scaled radial distances"):
+        k(np.array([0.0, 0.1]))
